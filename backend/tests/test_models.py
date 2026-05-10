@@ -93,3 +93,35 @@ def test_knowledge_doc():
         chunk_ids=[],
     )
     assert doc.doc_type == "style_guide"
+
+
+def test_task_status_states():
+    for state in ["pending", "planning", "awaiting_plan", "writing",
+                   "awaiting_draft", "reviewing", "awaiting_review",
+                   "exporting", "done", "failed"]:
+        ts = TaskStatus(task_id="t1", state=state, current_agent="test")
+        assert ts.state == state
+    # Test defaults
+    ts = TaskStatus(task_id="t1", state="pending", current_agent="test")
+    assert ts.progress == 0.0
+    assert ts.result is None
+    assert ts.error is None
+
+
+def test_word_count_rejects_negative():
+    with pytest.raises(ValidationError):
+        TaskRequest(project_id="p1", topic="x", platforms=["a"],
+                    content_type="x", target_audience="x", word_count=-1)
+
+
+def test_progress_out_of_range():
+    with pytest.raises(ValidationError):
+        TaskStatus(task_id="t1", state="pending", current_agent="x", progress=-1)
+    with pytest.raises(ValidationError):
+        TaskStatus(task_id="t1", state="pending", current_agent="x", progress=101)
+
+
+def test_invalid_doc_type():
+    with pytest.raises(ValidationError):
+        KnowledgeDoc(id="d1", project_id="p1", title="x", content="x",
+                     doc_type="bogus", source_path="x", chunk_ids=[])

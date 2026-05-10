@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TaskRequest(BaseModel):
@@ -9,7 +9,7 @@ class TaskRequest(BaseModel):
     platforms: list[str]
     content_type: str
     target_audience: str
-    word_count: int = 1000
+    word_count: int = Field(default=1000, ge=1)
     tone_override: Optional[str] = None
 
 
@@ -28,6 +28,6 @@ class TaskStatus(BaseModel):
         "failed",
     ]
     current_agent: str
-    progress: float = 0.0
+    progress: float = Field(default=0.0, ge=0.0, le=100.0)
     result: Optional[dict] = None
     error: Optional[str] = None

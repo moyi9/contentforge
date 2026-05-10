@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ReviewIssue(BaseModel):
@@ -15,7 +15,7 @@ class ReviewIssue(BaseModel):
 
 class ReviewResult(BaseModel):
     article_id: str
-    overall_score: float
+    overall_score: float = Field(ge=0, le=100)
     dimensions: dict[str, float]
     baseline_comparison: dict
     issues: list[ReviewIssue]
