@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post("")
 def api_create_task(data: dict):
-    task_id = str(uuid.uuid4())[:8]
+    task_id = str(uuid.uuid4())
     data["id"] = task_id
     data["created_at"] = datetime.now(tz=timezone.utc).isoformat()
     data["platforms"] = str(data.get("platforms", []))

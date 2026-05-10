@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post("/upload")
 def api_upload_document(data: dict):
     """Upload a knowledge document."""
-    doc_id = str(uuid.uuid4())[:8]
+    doc_id = str(uuid.uuid4())
     data["id"] = doc_id
     data["indexed_at"] = datetime.now(tz=timezone.utc).isoformat()
     data["chunk_ids"] = str([])

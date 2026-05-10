@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None
     unsplash_access_key: str | None = None
     mcp_server_port: int = 8765
+    api_token: str | None = None
 
     class Config:
         env_file = ".env"

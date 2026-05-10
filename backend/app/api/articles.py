@@ -17,7 +17,7 @@ router = APIRouter()
 @router.post("")
 def api_submit_article(data: dict):
     """Create a new article from task output sections."""
-    article_id = str(uuid.uuid4())[:8]
+    article_id = str(uuid.uuid4())
     data["id"] = article_id
     data["rag_sources"] = json.dumps(data.get("rag_sources", []))
     data["image_suggestions"] = json.dumps(data.get("image_suggestions", []))

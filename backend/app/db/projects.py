@@ -88,11 +88,23 @@ def delete_project(project_id: str) -> int:
         return cursor.rowcount
 
 
+TASK_ALLOWED_COLUMNS = {
+    "id", "project_id", "topic", "content_type", "target_audience",
+    "word_count", "platforms", "state", "current_agent", "progress",
+    "created_at",
+}
+
+
 def create_task(db, data: dict) -> None:
-    """Insert a new task row using an existing db connection."""
-    columns = ", ".join(data.keys())
-    placeholders = ", ".join(f":{k}" for k in data.keys())
-    db.execute(f"INSERT INTO tasks ({columns}) VALUES ({placeholders})", data)
+    """Insert a new task row using an existing db connection.
+
+    Only columns in TASK_ALLOWED_COLUMNS are accepted; any other keys
+    are silently ignored to prevent SQL injection via column names.
+    """
+    safe = {k: v for k, v in data.items() if k in TASK_ALLOWED_COLUMNS}
+    columns = ", ".join(safe.keys())
+    placeholders = ", ".join(f":{k}" for k in safe.keys())
+    db.execute(f"INSERT INTO tasks ({columns}) VALUES ({placeholders})", safe)
     db.commit()
 
 
@@ -108,11 +120,22 @@ def list_tasks(db) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+ARTICLE_ALLOWED_COLUMNS = {
+    "id", "task_id", "platform", "title", "sections",
+    "rag_sources", "image_suggestions", "metadata", "created_at",
+}
+
+
 def create_article(db, data: dict) -> None:
-    """Insert a new article row using an existing db connection."""
-    columns = ", ".join(data.keys())
-    placeholders = ", ".join(f":{k}" for k in data.keys())
-    db.execute(f"INSERT INTO articles ({columns}) VALUES ({placeholders})", data)
+    """Insert a new article row using an existing db connection.
+
+    Only columns in ARTICLE_ALLOWED_COLUMNS are accepted; any other keys
+    are silently ignored to prevent SQL injection via column names.
+    """
+    safe = {k: v for k, v in data.items() if k in ARTICLE_ALLOWED_COLUMNS}
+    columns = ", ".join(safe.keys())
+    placeholders = ", ".join(f":{k}" for k in safe.keys())
+    db.execute(f"INSERT INTO articles ({columns}) VALUES ({placeholders})", safe)
     db.commit()
 
 

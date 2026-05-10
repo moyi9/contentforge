@@ -6,8 +6,11 @@ from app.api import articles
 from app.api import knowledge
 from app.api import projects
 from app.api import tasks
+from app.middleware import ContentForgeSecurityMiddleware
 
 app = FastAPI(title="ContentForge", version="0.1.0")
+
+app.add_middleware(ContentForgeSecurityMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

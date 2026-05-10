@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.post("")
 def api_create_project(data: dict):
-    project_id = str(uuid.uuid4())[:8]
+    project_id = str(uuid.uuid4())
     data["id"] = project_id
     data["created_at"] = datetime.now(tz=timezone.utc).isoformat()
     data["forbidden_words"] = str(data.get("forbidden_words", []))
