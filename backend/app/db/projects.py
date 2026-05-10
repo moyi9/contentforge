@@ -86,3 +86,23 @@ def delete_project(project_id: str) -> int:
     with get_db() as db:
         cursor = db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
         return cursor.rowcount
+
+
+def create_task(db, data: dict) -> None:
+    """Insert a new task row using an existing db connection."""
+    columns = ", ".join(data.keys())
+    placeholders = ", ".join(f":{k}" for k in data.keys())
+    db.execute(f"INSERT INTO tasks ({columns}) VALUES ({placeholders})", data)
+    db.commit()
+
+
+def get_task(db, task_id: str) -> dict | None:
+    """Get a single task by id. Returns dict or None."""
+    row = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def list_tasks(db) -> list[dict]:
+    """List all tasks ordered by creation time (newest first)."""
+    rows = db.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
+    return [dict(r) for r in rows]
