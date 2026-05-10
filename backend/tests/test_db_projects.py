@@ -1,7 +1,14 @@
 import pytest
+import sqlite3
 import os
 from app.db.database import get_db, init_db
-from app.db.projects import create_project, get_project, list_projects, delete_project
+from app.db.projects import (
+    create_project,
+    get_project,
+    list_projects,
+    update_project,
+    delete_project,
+)
 
 
 @pytest.fixture
@@ -90,8 +97,6 @@ def test_update_project(test_db):
             "knowledge_base_path": "",
         }
     )
-    from app.db.projects import update_project
-
     update_project("p1", {"name": "Updated", "writing_style": "formal"})
     p = get_project("p1")
     assert p["name"] == "Updated"
@@ -100,3 +105,51 @@ def test_update_project(test_db):
 
 def test_get_nonexistent_project(test_db):
     assert get_project("nonexistent") is None
+
+
+def test_update_project_empty_data(test_db):
+    create_project({
+        "id": "p1",
+        "name": "Test",
+        "description": "",
+        "writing_style": "",
+        "forbidden_words": "[]",
+        "template_config": "{}",
+        "knowledge_base_path": "",
+    })
+    with pytest.raises(ValueError, match="must not be empty"):
+        update_project("p1", {})
+
+
+def test_update_project_invalid_column(test_db):
+    create_project({
+        "id": "p1",
+        "name": "Test",
+        "description": "",
+        "writing_style": "",
+        "forbidden_words": "[]",
+        "template_config": "{}",
+        "knowledge_base_path": "",
+    })
+    with pytest.raises(ValueError, match="invalid column"):
+        update_project("p1", {"name": "ok", "evil_column": "drop table"})
+
+
+def test_update_project_nonexistent(test_db):
+    affected = update_project("ghost", {"name": "No One"})
+    assert affected == 0
+
+
+def test_duplicate_insert(test_db):
+    data = {
+        "id": "p1",
+        "name": "First",
+        "description": "",
+        "writing_style": "",
+        "forbidden_words": "[]",
+        "template_config": "{}",
+        "knowledge_base_path": "",
+    }
+    create_project(data)
+    with pytest.raises(sqlite3.IntegrityError):
+        create_project(data)
