@@ -61,7 +61,7 @@ async def test_export_rich_text(tmp_path):
 @pytest.mark.asyncio
 async def test_export_invalid_format(tmp_path):
     agent = ExporterAgent(output_dir=str(tmp_path))
-    with pytest.raises(ValueError, match="Invalid format"):
+    with pytest.raises(ValueError, match="Unsupported format"):
         await agent.run(
             article=SAMPLE_ARTICLE,
             format="docx",

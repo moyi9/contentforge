@@ -1,75 +1,76 @@
-"""Reviewer Agent — evaluates content quality across 5 dimensions"""
+"""Reviewer Agent — quality review with 5-dimension scoring via LLM."""
 
-import re
+from app.llm.client import LLMClient
+
+
+REVIEWER_SYSTEM_PROMPT = """你是一名内容质量审核专家。对给定的文章进行5维度评分，
+并列出需要改进的问题。
+
+5个评分维度：
+1. 合规性（是否违规、敏感词、政治不正确）
+2. 原创度（内容是否有独到见解，避免套话）
+3. 可读性（行文流畅度、逻辑清晰度）
+4. 风格一致性（是否符合作者/平台的一贯风格）
+5. 平台适配性（是否符合目标平台的调性和规范）
+
+每个维度0-100分。问题列表按严重程度排序：
+- error: 严重问题（必须修改）
+- warning: 建议修改
+- info: 可优化项
+
+请以 JSON 格式返回，严格按照以下结构：
+{
+  "overall_score": 85,
+  "dimensions": {"合规性": 95, "原创度": 78, "可读性": 85, "风格一致性": 80, "平台适配性": 82},
+  "issues": [
+    {"section_index": 0, "text": "问题简述", "severity": "warning", "dimension": "可读性", "suggestion": "改进建议"}
+  ],
+  "summary": "整体评价（30字以内）"
+}
+"""
+
+FORBIDDEN_WORDS_CHECK = """额外要求：如果文章包含以下禁用词，请在高违规的issues中标记：
+{forbidden_words}
+"""
 
 
 class ReviewerAgent:
-    """Reviews generated articles across 5 quality dimensions.
-    Detects forbidden words, scores quality, and provides fix suggestions.
-    In production this would use an LLM for deeper analysis."""
+    """Quality review with 5-dimension scoring via LLM."""
 
-    DIMENSIONS = ["合规性", "原创度", "可读性", "风格一致性", "平台适配性"]
-
-    def __init__(self):
+    def __init__(self, llm_client: LLMClient | None = None):
         self.name = "reviewer"
+        self._llm = llm_client or LLMClient()
 
-    async def run(self, article: dict, project_context: dict) -> dict:
-        """Review an article and return quality report."""
-        forbidden_words = [w.lower() for w in project_context.get("forbidden_words", [])]
-        all_text = self._extract_text(article)
+    async def run(self, project_context: dict, article: dict,
+                  platform: str) -> dict:
+        """Review article content and return scores + issues."""
+        forbidden = project_context.get("forbidden_words", [])
 
-        issues = []
+        # Build article text for review
+        sections_text = ""
+        for i, sec in enumerate(article.get("sections", [])):
+            sections_text += f"\n[Section {i}] {sec.get('heading', '')}\n{sec.get('content', '')}\n"
 
-        # Check forbidden words
-        for word in forbidden_words:
-            pattern = re.compile(re.escape(word), re.IGNORECASE)
-            for i, section in enumerate(article.get("sections", [])):
-                content = section.get("content", "")
-                for match in pattern.finditer(content):
-                    issues.append({
-                        "section_index": i,
-                        "text": match.group(),
-                        "severity": "error" if len(word.split()) > 2 else "warning",
-                        "dimension": "合规性",
-                        "rule_ref": f"forbidden_word:{word}",
-                        "suggestion": f"Remove forbidden word '{match.group()}'",
-                        "auto_fixed": False
-                    })
+        user_prompt = f"""目标平台：{platform}
+项目风格：{project_context.get('writing_style', '未指定')}
 
-        # Score dimensions
-        forbidden_count = len([i for i in issues if i["dimension"] == "合规性"])
-        compliance_score = max(0, 100 - forbidden_count * 15)
+文章内容：
+{sections_text}
+"""
+        if forbidden:
+            user_prompt += FORBIDDEN_WORDS_CHECK.format(forbidden_words=", ".join(forbidden))
 
-        # Content length check
-        total_chars = len(all_text)
-        readability_score = min(100, max(20, total_chars // 2)) if total_chars > 0 else 50
+        messages = [
+            {"role": "system", "content": REVIEWER_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
 
-        dimensions = {
-            "合规性": compliance_score,
-            "原创度": 80,  # Placeholder - real impl uses similarity check
-            "可读性": readability_score,
-            "风格一致性": 75,  # Placeholder
-            "平台适配性": 85   # Placeholder
-        }
-
-        overall_score = sum(dimensions.values()) / len(dimensions)
-        passed = compliance_score >= 80 and overall_score >= 70
-
-        suggestions = [i["suggestion"] for i in issues]
+        result = await self._llm.chat_json(messages=messages, temperature=0.3)
+        data = result["content"]
 
         return {
-            "article_id": article.get("title", "unknown"),
-            "overall_score": round(overall_score, 1),
-            "dimensions": dimensions,
-            "baseline_comparison": {
-                "原创度": {"you": 80, "avg": 85},
-                "可读性": {"you": readability_score, "avg": 78}
-            },
-            "issues": issues,
-            "suggestions": suggestions,
-            "passed": passed
+            "overall_score": data.get("overall_score", 60),
+            "dimensions": data.get("dimensions", {}),
+            "issues": data.get("issues", []),
+            "summary": data.get("summary", ""),
         }
-
-    def _extract_text(self, article: dict) -> str:
-        sections = article.get("sections", [])
-        return " ".join(s.get("content", "") for s in sections)

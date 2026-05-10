@@ -1,82 +1,84 @@
-"""Exporter Agent — exports articles in multiple formats"""
+"""Exporter Agent — formats articles into various output formats.
+
+Currently uses templates for deterministic output; LLM enhancement
+for richer formatting (e.g., html styling) can be added later.
+"""
+
+import json
 import os
-from pathlib import Path
+from datetime import datetime
+from app.config import settings
+
+
+EXPORT_DIR = os.path.join(os.path.dirname(settings.database_url.replace("sqlite:///", "")), "exports") if settings.database_url.startswith("sqlite:///") else "./data/exports"
 
 
 class ExporterAgent:
-    """Exports articles to format files. Supports markdown, plain text,
-    rich text (HTML), and PDF (placeholder)."""
+    """Formats articles into Markdown, Plain Text, Rich Text (HTML), or PDF."""
 
-    VALID_FORMATS = {"markdown", "plain_text", "rich_text", "pdf"}
-
-    def __init__(self, output_dir: str = "./data/exports"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, output_dir: str | None = None):
         self.name = "exporter"
+        self._export_dir = output_dir or EXPORT_DIR
 
     async def run(self, article: dict, format: str,
                   include_review_notes: bool = False,
-                  include_image_suggestions: bool = False) -> dict:
-        if format not in self.VALID_FORMATS:
-            raise ValueError(
-                f"Invalid format: {format}. Supported: {sorted(self.VALID_FORMATS)}"
-            )
+                  include_image_suggestions: bool = True) -> dict:
+        """Export an article to the requested format."""
+        os.makedirs(self._export_dir, exist_ok=True)
 
-        title = article.get("title", "untitled")
-        safe_filename = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)
+        title = article.get("title", "Untitled")
+        sections = article.get("sections", [])
 
         if format == "markdown":
-            content = self._to_markdown(article, include_review_notes)
-            ext = ".md"
+            content = self._to_markdown(title, sections)
         elif format == "plain_text":
-            content = self._to_plain_text(article)
-            ext = ".txt"
+            content = self._to_plain_text(title, sections)
         elif format == "rich_text":
-            content = self._to_rich_text(article, include_review_notes)
-            ext = ".html"
+            content = self._to_rich_text(title, sections)
         elif format == "pdf":
-            content = self._to_markdown(article, include_review_notes)
-            ext = ".md"  # placeholder for pdf
+            # PDF currently exported as markdown (real PDF conversion needs wkhtmltopdf or similar)
+            content = self._to_markdown(title, sections)
         else:
-            raise ValueError(f"Unknown format: {format}")
+            raise ValueError(f"Unsupported format: {format}")
 
-        filepath = self.output_dir / f"{safe_filename}{ext}"
-        filepath.write_text(content, encoding="utf-8")
+        filename = f"{title.replace(' ', '_')[:40]}.{self._extension(format)}"
+        filepath = os.path.join(self._export_dir, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
 
         return {
             "format": format,
-            "file_path": str(filepath),
-            "title": title
+            "file_path": filepath,
+            "content": content[:500] + "..." if len(content) > 500 else content,
         }
 
-    def _to_markdown(self, article: dict, include_review: bool) -> str:
-        lines = [f"# {article.get('title', 'Untitled')}", ""]
-        for section in article.get("sections", []):
-            lines.append(f"## {section.get('heading', '')}")
-            lines.append("")
-            lines.append(section.get("content", ""))
-            lines.append("")
-        return "\n".join(lines)
+    def _to_markdown(self, title: str, sections: list) -> str:
+        lines = [f"# {title}\n"]
+        for sec in sections:
+            lines.append(f"\n## {sec.get('heading', '')}\n")
+            lines.append(f"{sec.get('content', '')}\n")
+        return "".join(lines)
 
-    def _to_plain_text(self, article: dict) -> str:
-        lines = [article.get("title", "Untitled"), "=" * len(article.get("title", "")), ""]
-        for section in article.get("sections", []):
-            lines.append(section.get("heading", ""))
-            lines.append("-" * len(section.get("heading", "")))
-            lines.append(section.get("content", ""))
-            lines.append("")
-        return "\n".join(lines)
+    def _to_plain_text(self, title: str, sections: list) -> str:
+        lines = [f"{title}\n{'=' * len(title)}\n"]
+        for sec in sections:
+            lines.append(f"\n{sec.get('heading', '')}\n{'-' * len(sec.get('heading', ''))}\n")
+            lines.append(f"{sec.get('content', '')}\n")
+        return "".join(lines)
 
-    def _to_rich_text(self, article: dict, include_review: bool) -> str:
-        title = article.get("title", "Untitled")
-        html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>{title}</title></head>
-<body>
-<h1>{title}</h1>
-"""
-        for section in article.get("sections", []):
-            html += f"<h2>{section.get('heading', '')}</h2>\n"
-            html += f"<p>{section.get('content', '')}</p>\n"
-        html += "</body>\n</html>"
-        return html
+    def _to_rich_text(self, title: str, sections: list) -> str:
+        """Basic HTML export."""
+        parts = ["<!DOCTYPE html><html><head><meta charset='utf-8'>",
+                 f"<title>{title}</title>",
+                 "<style>body{max-width:800px;margin:auto;padding:2em;font-family:system-ui,sans-serif;"
+                 "line-height:1.8}h1{color:#333}h2{color:#555}p{color:#444}</style></head><body>",
+                 f"<h1>{title}</h1>"]
+        for sec in sections:
+            parts.append(f"<h2>{sec.get('heading', '')}</h2>")
+            parts.append(f"<p>{sec.get('content', '')}</p>")
+        parts.append("</body></html>")
+        return "\n".join(parts)
+
+    def _extension(self, fmt: str) -> str:
+        return {"markdown": "md", "plain_text": "txt", "rich_text": "html", "pdf": "md"}.get(fmt, "txt")
