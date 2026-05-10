@@ -106,3 +106,17 @@ def list_tasks(db) -> list[dict]:
     """List all tasks ordered by creation time (newest first)."""
     rows = db.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
     return [dict(r) for r in rows]
+
+
+def create_article(db, data: dict) -> None:
+    """Insert a new article row using an existing db connection."""
+    columns = ", ".join(data.keys())
+    placeholders = ", ".join(f":{k}" for k in data.keys())
+    db.execute(f"INSERT INTO articles ({columns}) VALUES ({placeholders})", data)
+    db.commit()
+
+
+def get_article(db, article_id: str) -> dict | None:
+    """Get a single article by id. Returns dict or None."""
+    row = db.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
+    return dict(row) if row else None

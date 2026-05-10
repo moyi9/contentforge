@@ -65,6 +65,20 @@ def init_db(db_url: str) -> None:
             FOREIGN KEY (project_id) REFERENCES projects(id)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS articles (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            platform TEXT,
+            title TEXT,
+            sections TEXT DEFAULT '[]',
+            rag_sources TEXT DEFAULT '[]',
+            image_suggestions TEXT DEFAULT '[]',
+            metadata TEXT DEFAULT '{}',
+            created_at TEXT,
+            FOREIGN KEY (task_id) REFERENCES tasks(id)
+        )
+    """)
     conn.commit()
     conn.close()
 
