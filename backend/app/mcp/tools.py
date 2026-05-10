@@ -37,6 +37,6 @@ def export_article(
     return {"status": "ok", "article_id": article_id, "format": format}
 
 
-def feedback_record(article_id: str, rating: int, tags: list[str]) -> dict:
+def feedback_record(article_id: str, rating: int, tags: list[str] = None) -> dict:
     """Record user feedback on generated content."""
     return {"status": "recorded", "article_id": article_id, "rating": rating, "tags": tags}

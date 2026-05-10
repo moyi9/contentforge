@@ -79,6 +79,7 @@ def create_mcp_server() -> Server:
                         "article_id": {"type": "string"},
                         "format": {"type": "string"},
                         "include_review_notes": {"type": "boolean", "default": False},
+                        "include_image_suggestions": {"type": "boolean", "default": True},
                     },
                     "required": ["article_id", "format"],
                 },
