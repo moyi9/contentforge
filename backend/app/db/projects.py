@@ -63,6 +63,24 @@ def update_project(project_id: str, data: dict) -> int:
         return cursor.rowcount
 
 
+def create_knowledge_doc(db, data: dict) -> None:
+    """Insert a new knowledge document."""
+    db.execute(
+        """INSERT INTO knowledge_docs
+           (id, project_id, title, content, doc_type, source_path, chunk_ids, indexed_at)
+           VALUES (:id, :project_id, :title, :content, :doc_type, :source_path, :chunk_ids, :indexed_at)""",
+        data,
+    )
+
+
+def list_knowledge_docs(db, project_id: str) -> list[dict]:
+    """List all knowledge docs for a project."""
+    rows = db.execute(
+        "SELECT * FROM knowledge_docs WHERE project_id = ?", (project_id,)
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def delete_project(project_id: str) -> int:
     """Delete a project by id. Returns the number of affected rows."""
     with get_db() as db:

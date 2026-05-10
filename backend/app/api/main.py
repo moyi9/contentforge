@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import projects
+from app.api import knowledge
 
 app = FastAPI(title="ContentForge", version="0.1.0")
 
@@ -15,3 +16,4 @@ app.add_middleware(
 )
 
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])

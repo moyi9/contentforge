@@ -36,6 +36,19 @@ def init_db(db_url: str) -> None:
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_docs (
+            id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            title TEXT,
+            content TEXT,
+            doc_type TEXT,
+            source_path TEXT,
+            chunk_ids TEXT DEFAULT '[]',
+            indexed_at TEXT,
+            FOREIGN KEY (project_id) REFERENCES projects(id)
+        )
+    """)
     conn.commit()
     conn.close()
 
